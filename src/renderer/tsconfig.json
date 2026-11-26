@@ -1,0 +1,5 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": { "lib": ["ES2024", "DOM", "DOM.Iterable", "ESNext.Disposable"], "jsx": "react-jsx", "skipLibCheck": true },
+  "include": ["**/*.ts", "**/*.tsx", "../../docs-lint/examples/**/*.ts", "../../docs-lint/examples/**/*.tsx"]
+}

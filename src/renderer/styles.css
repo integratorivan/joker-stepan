@@ -1,0 +1,15 @@
+@layer theme, base, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities) source(none);
+@source "./**/*.tsx";
+
+@layer base {
+  body {
+    margin: 0;
+    font-family: "SF Pro Rounded", ui-rounded, system-ui, sans-serif;
+  }
+
+  button, input, textarea {
+    font: inherit;
+  }
+}
