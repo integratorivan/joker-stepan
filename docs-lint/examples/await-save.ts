@@ -1,3 +1,3 @@
-export async function saveDraft(save: () => Promise<void>) {
+export const saveDraft = async (save: () => Promise<void>) => {
   await save()
 }

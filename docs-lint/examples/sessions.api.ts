@@ -1,7 +1,7 @@
 import ky from 'ky'
 import type { Session } from './sessions.types'
 
-export function parseSessions(input: unknown): Session[] {
+export const parseSessions = (input: unknown): Session[] => {
   if (!Array.isArray(input)) throw new Error('Ожидался список сессий')
   const rows: readonly unknown[] = input
   return rows.map(row => {
@@ -16,7 +16,7 @@ export function parseSessions(input: unknown): Session[] {
 }
 
 // Повторной попыткой управляет ресурс через sessions.retry().
-export async function getSessions(url: URL, signal: AbortSignal): Promise<Session[]> {
+export const getSessions = async (url: URL, signal: AbortSignal): Promise<Session[]> => {
   const rows = await ky.get(url, { signal, retry: 0 }).json<unknown>()
   return parseSessions(rows)
 }

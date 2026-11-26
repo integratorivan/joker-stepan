@@ -1,1 +1,3 @@
-export { useState as localState } from 'react'
+import { useState as localState } from 'react'
+
+export const hook = () => localState

@@ -9,8 +9,7 @@ export const componentFile = defineRule({
     spacing: 'Отделите ветку if пустой строкой. См. docs-lint/examples/session-list.tsx.',
     declaration: 'Объявите компонент через export const и стрелку. Реактивную стрелку передайте в reatomComponent.',
     multiple: 'Вынесите компонент в собственный .tsx файл.',
-    props: 'Укажите именованный тип props из соседнего .ts файла.',
-    types: 'Перенесите объявление типа в соседний .ts файл.',
+    props: 'Укажите именованный тип props из соседнего .types.ts файла.',
     mutable: 'Используйте const и верните JSX непосредственно из ветки if.',
     model: 'Объявите модель Reatom в .ts модуле и импортируйте её в представление.',
   } },
@@ -18,23 +17,24 @@ export const componentFile = defineRule({
     let components = 0
     const renders = new Set<ESTree.Node>()
 
-    function count(node: ESTree.Node) {
+    const count = (node: ESTree.Node) => {
       components += 1
       if (components > 1) context.report({ node, messageId: 'multiple' })
     }
 
-    function checkProps(parameter: ESTree.ArrowFunctionExpression['params'][number] | undefined, generic?: ESTree.TSType) {
+    const checkProps = (parameter: ESTree.ArrowFunctionExpression['params'][number] | undefined, generic?: ESTree.TSType) => {
       if (parameter === undefined && generic === undefined) return
       const annotation = parameter && 'typeAnnotation' in parameter ? parameter.typeAnnotation?.typeAnnotation : undefined
       const type = annotation ?? generic
       const location = parameter ?? generic
       if (!location) return
+      if (type?.type === 'TSTypeLiteral') return // Handled by project/separate-types.
       if (type?.type !== 'TSTypeReference' || type.typeName.type !== 'Identifier') {
         context.report({ node: location, messageId: 'props' })
         return
       }
       const declaration = binding(type.typeName, context)?.parent
-      if (declaration?.type !== 'ImportDeclaration' || !/^\.\/[^/]+$/u.test(declaration.source.value)) {
+      if (declaration?.type !== 'ImportDeclaration' || !/^\.\/[^/]+\.types(?:\.ts)?$/u.test(declaration.source.value)) {
         context.report({ node: location, messageId: 'props' })
       }
     }
@@ -108,7 +108,6 @@ export const componentFile = defineRule({
         if (node.parent.type !== 'ExportDefaultDeclaration' && !/^[A-Z]/u.test(node.id?.name ?? '')) return
         count(node)
         renders.add(node)
-        context.report({ node, messageId: 'declaration' })
         checkProps(node.params[0])
       },
       ClassDeclaration(node) {
@@ -129,9 +128,6 @@ export const componentFile = defineRule({
           }
           parent = parent.parent
         }
-      },
-      'TSInterfaceDeclaration, TSTypeAliasDeclaration'(node) {
-        context.report({ node, messageId: 'types' })
       },
       CallExpression(node) {
         const factory = primitiveName(node.callee, context)

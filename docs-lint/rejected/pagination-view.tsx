@@ -1,6 +1,6 @@
 import { wrap } from '@reatom/core'
 import { reatomComponent } from '@reatom/react'
-import { count } from '../../src/renderer/model/counter'
+import { count } from '../examples/counter'
 
 export const Pagination = reatomComponent(() => {
   const totalPages = Math.ceil(count() / 20)

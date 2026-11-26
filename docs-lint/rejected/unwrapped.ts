@@ -1,6 +1,6 @@
 import { action } from '@reatom/core'
 
-async function saveDraft(persist: () => Promise<void>) {
+const saveDraft = async (persist: () => Promise<void>) => {
   await persist()
 }
 

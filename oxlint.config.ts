@@ -1,7 +1,22 @@
 import { builtinModules } from 'node:module'
 import { defineConfig } from 'oxlint'
 
-import { stateHooks } from './tooling/react-state.ts'
+import { derivedHooks, stateHooks } from './tooling/react-state.ts'
+
+const dom = 'DOM и URL доступны в *.adapter.ts. Модель получает их через интерфейс из *.model.types.ts.'
+const navigation = 'Ссылку строит navigation.href(), переход выполняет модель навигации. Работа с URL — в navigation/hash-navigation.adapter.ts.'
+const storage = 'Хранилище подключается в *.adapter.ts за интерфейсом, например SessionStore из sessions/session.types.ts.'
+const network = 'Сеть — в *.adapter.ts через ky. См. docs-lint/examples/sessions.api.ts.'
+const platformGlobals = [
+  { name: 'window', message: dom }, { name: 'document', message: dom }, { name: 'self', message: dom },
+  { name: 'location', message: navigation }, { name: 'history', message: navigation },
+  { name: 'localStorage', message: storage }, { name: 'sessionStorage', message: storage }, { name: 'indexedDB', message: storage },
+  { name: 'fetch', message: network }, { name: 'XMLHttpRequest', message: network }, { name: 'WebSocket', message: network },
+  { name: 'navigator', message: 'Возможности браузера подключаются в *.adapter.ts.' },
+  { name: 'crypto', message: 'Генератор ID передаётся фабрике модели параметром nextId из src/renderer/main.tsx.' },
+]
+const featureFiles = ['src/features/**/*.{ts,tsx}', 'docs-lint/rejected/architecture/features/**/*.{ts,tsx}']
+const adapterFiles = ['src/features/**/*.adapter.ts', 'docs-lint/rejected/architecture/features/**/*.adapter.ts']
 
 export default defineConfig({
   plugins: ['import', 'typescript', 'react', 'jsx-a11y', 'unicorn', 'oxc'],
@@ -12,6 +27,10 @@ export default defineConfig({
   rules: {
     'react/react-in-jsx-scope': 'off', // JSX is compiled with the automatic runtime.
     'project/async-extensions': 'error',
+    'project/const-functions': 'error',
+    'project/separate-types': 'error',
+    'project/no-barrel': 'error',
+    'project/promise-chains': 'error',
     'project/resource-lifecycle': 'error',
     'project/peek-usage': 'error',
     'project/wrapped-await': 'error',
@@ -51,11 +70,34 @@ export default defineConfig({
   },
   overrides: [
     {
-      files: ['src/renderer/**/*.tsx', 'docs-lint/{examples,rejected}/**/*.tsx'],
+      files: ['src/**/*.{ts,tsx}', 'docs-lint/rejected/architecture/**/*.{ts,tsx}'],
+      rules: { 'project/file-roles': 'error' },
+    },
+    {
+      files: ['src/**/*.{ts,tsx}', 'docs-lint/{examples,rejected}/**/*.{ts,tsx}'],
+      rules: { 'project/constants-file': 'error' },
+    },
+    {
+      files: ['src/features/**/*.tsx', 'docs-lint/examples/**/*.tsx', 'docs-lint/rejected/naming/**/*.tsx'],
+      rules: { 'project/filename-export': 'error' },
+    },
+    {
+      files: featureFiles,
+      rules: {
+        'no-restricted-globals': ['error', ...platformGlobals],
+        'no-restricted-properties': ['error', ...platformGlobals.map(({ name, message }) => ({ object: 'globalThis', property: name, message }))],
+      },
+    },
+    {
+      files: adapterFiles,
+      rules: { 'no-restricted-globals': 'off', 'no-restricted-properties': 'off' },
+    },
+    {
+      files: ['src/{features,renderer}/**/*.tsx', 'docs-lint/{examples,rejected}/**/*.tsx'],
       rules: { 'project/tracked-render': 'error', 'project/component-file': 'error', 'project/pagination-in-view': 'error' },
     },
     {
-      files: ['src/renderer/**/*.{ts,tsx}', 'docs-lint/{examples,rejected}/**/*.{ts,tsx}'],
+      files: ['src/{renderer,features}/**/*.{ts,tsx}', 'docs-lint/{examples,rejected}/**/*.{ts,tsx}'],
       rules: {
         'project/react-state': 'error',
         'no-restricted-imports': ['error', {
@@ -63,6 +105,8 @@ export default defineConfig({
             ...builtinModules,
             { name: 'react', importNames: stateHooks,
               message: 'Состояние хранится в модели Reatom. Подпишите представление через reatomComponent.' },
+            { name: 'react', importNames: derivedHooks,
+              message: 'Посчитайте значение в computed модели, а обработчик свяжите с действием через wrap.' },
             { name: '@reatom/react', importNames: ['useAtom', 'useAction'], message: 'Используйте reatomComponent и wrap.' },
           ],
           patterns: [{ group: ['node:*', 'node:*/**', 'electron', 'electron/**'], message: 'Системные API вызываются в main.' }],
@@ -70,7 +114,7 @@ export default defineConfig({
       },
     },
     {
-      files: ['src/renderer/model/**/*.{ts,tsx}', 'docs-lint/{examples,rejected}/model/**/*.{ts,tsx}'],
+      files: ['src/features/**/*.model.ts', 'docs-lint/{examples,rejected}/model/**/*.{ts,tsx}'],
       rules: {
         'no-restricted-imports': ['error', {
           paths: [...builtinModules],

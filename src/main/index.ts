@@ -3,7 +3,7 @@ import { app, BrowserWindow } from 'electron'
 
 const icon = join(app.getAppPath(), 'resources', 'icon.png')
 
-async function openWindow() {
+const openWindow = async () => {
   const window = new BrowserWindow({
     width: 720,
     height: 480,
@@ -19,15 +19,18 @@ async function openWindow() {
   }
 }
 
-function exitOnFailure(error: unknown) {
+const exitOnFailure = (error: unknown) => {
   console.error(error)
   app.exit(1)
 }
 
-app.whenReady().then(() => {
+const start = async () => {
+  await app.whenReady()
   app.dock?.setIcon(icon)
-  return openWindow()
-}).catch(exitOnFailure)
+  await openWindow()
+}
+
+start().catch(exitOnFailure)
 
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {

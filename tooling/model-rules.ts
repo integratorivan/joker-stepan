@@ -1,10 +1,11 @@
 import { defineRule } from '@oxlint/plugins'
 import type { Context, ESTree } from '@oxlint/plugins'
+import type { AsyncExtension, SnapshotRead } from './model-rules.types.ts'
 import { inspectTypes, isStateUnit } from './inspect-types.ts'
 import { binding, primitiveName } from './reatom-imports.ts'
 import { enclosingFunction } from './render-phase.ts'
 
-function constValue(node: ESTree.Expression, context: Context) {
+const constValue = (node: ESTree.Expression, context: Context) => {
   if (node.type !== 'Identifier') return undefined
   const def = binding(node, context)
   if (def?.parent?.type === 'VariableDeclaration' && def.parent.kind === 'const'
@@ -12,16 +13,14 @@ function constValue(node: ESTree.Expression, context: Context) {
   return undefined
 }
 
-function extendedTarget(node: ESTree.CallExpression) {
+const extendedTarget = (node: ESTree.CallExpression) => {
   const { callee } = node
   if (callee.type === 'MemberExpression' && !callee.computed && callee.property.type === 'Identifier'
       && callee.property.name === 'extend' && callee.object.type !== 'Super') return callee.object
   return undefined
 }
 
-type AsyncExtension = 'withAsync' | 'withAsyncData'
-
-function asyncExtensionsOn(call: ESTree.CallExpression, context: Context) {
+const asyncExtensionsOn = (call: ESTree.CallExpression, context: Context) => {
   const kinds = new Set<AsyncExtension>()
   for (const arg of call.arguments) {
     if (arg.type === 'SpreadElement') continue
@@ -72,7 +71,7 @@ export const asyncExtensions = defineRule({
   },
 })
 
-function singleResult(callback: NonNullable<ReturnType<typeof enclosingFunction>>) {
+const singleResult = (callback: NonNullable<ReturnType<typeof enclosingFunction>>) => {
   const { body } = callback
   if (body?.type !== 'BlockStatement') return body
   const [only] = body.body
@@ -87,7 +86,7 @@ export const peekUsage = defineRule({
   } },
   create(context) {
     const snapshotOwners = new Set<ESTree.Node>()
-    const reads: { call: ESTree.CallExpression; value: ESTree.Expression; owner: ESTree.Node }[] = []
+    const reads: SnapshotRead[] = []
     return {
       CallExpression(node) {
         const primitive = primitiveName(node.callee, context)
