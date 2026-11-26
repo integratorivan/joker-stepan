@@ -8,7 +8,7 @@ const callbackIndex = new Map([
   ['addCallHook', 1], ['addChangeHook', 1], ['addErrorHook', 1],
 ])
 
-function isFunction(node: ESTree.Node) {
+const isFunction = (node: ESTree.Node) => {
   return node.type === 'FunctionExpression' || node.type === 'ArrowFunctionExpression' || node.type === 'FunctionDeclaration'
 }
 

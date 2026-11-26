@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Как писать код в StepanFactory</title>
+<style>
+:root { color-scheme: light; font-family: Inter, -apple-system, BlinkMacSystemFont, sans-serif; color: #132f32; background: #fafaf6; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+header, .layout { max-width: 71rem; margin: auto; padding: 0 clamp(1rem, 4vw, 3rem); }
+header { padding-block: clamp(2rem, 7vw, 5rem) 2rem; border-bottom: 1px solid #ced9d3; }
+h1 { font: 500 clamp(2.25rem, 6vw, 4rem)/1.04 Georgia, serif; letter-spacing: -.04em; margin: 0; }
+p, dd { line-height: 1.65; max-width: 72ch; }
+header p { margin-bottom: 0; font-size: 1.1rem; }
+.layout { display: grid; grid-template-columns: 13rem minmax(0,1fr); gap: clamp(2rem, 5vw, 5rem); padding-bottom: 4rem; }
+nav { position: sticky; top: 1rem; align-self: start; padding-top: 2.1rem; }
+nav a { display: block; padding: .45rem 0; }
+a { color: #12675d; text-underline-offset: .2em; }
+a:focus-visible { outline: 2px solid #13766b; outline-offset: 3px; }
+h2 { font-size: clamp(1.4rem, 3vw, 2rem); letter-spacing: -.035em; scroll-margin-top: 1rem; }
+section { padding: 1rem 0 1.5rem; border-bottom: 1px solid #ced9d3; }
+code { font: .92em/1.55 'IBM Plex Mono', ui-monospace, monospace; }
+figure { margin: 1.1rem 0; }
+figcaption { padding: .6rem .9rem; border: 1px solid #ced9d3; background: #edf1ec; border-radius: .4rem .4rem 0 0; font: .8rem/1.5 ui-monospace, monospace; overflow-wrap: anywhere; }
+pre { margin: 0; padding: 1rem; overflow: auto; background: #142c30; color: #e5f3e6; border-radius: 0 0 .4rem .4rem; }
+pre code { font-size: .85rem; }
+dt { font-weight: bold; margin-top: 1rem; }
+dd { margin: .25rem 0; }
+@media (max-width: 48rem) { .layout { display: block; } nav { position: static; display: flex; flex-wrap: wrap; column-gap: 1rem; padding-top: 1rem; } }
+</style>
+</head>
+<body>
+<header><h1>Как писать код в StepanFactory</h1><p>Список сессий от TypeScript-контракта до кнопки повторной загрузки.</p></header>
+<div class="layout">
+<nav aria-label="Разделы"><a href="#exports">Функции и типы</a><a href="#view">UI-компонент</a><a href="#resource">HTTP и Reatom</a><a href="#main">Node.js и Electron</a><a href="#iv3">Ядро iv3</a><a href="#lint">Проверки</a></nav>
+<main>
+<section aria-labelledby="exports"><h2 id="exports">Функция и её типы</h2>
+<p>Маршруту достаточно одной строки. Чистая функция лежит в <code>*.domain.ts</code>, и рядом с ней обязателен тест. Контракт сессии общий для модели, хранилища и представления. Все три импортируют его через <code>import type</code>.</p>
+<figure><figcaption><a href="../src/features/navigation/navigation.domain.ts">src/features/navigation/navigation.domain.ts</a></figcaption>
+<pre><code data-source="../src/features/navigation/navigation.domain.ts">export const sessionPath = (id: string) =&gt; sessionPrefix + id</code></pre></figure>
+<figure><figcaption><a href="../src/features/sessions/session.types.ts">src/features/sessions/session.types.ts</a></figcaption>
+<pre><code data-source="../src/features/sessions/session.types.ts">export interface SessionMessage {
+  id: string
+  text: string
+}
+
+export interface Session {
+  id: string
+  title: string
+  model: string
+  draft: string
+  queue: SessionMessage[]
+}</code></pre></figure>
+</section>
+<section aria-labelledby="view"><h2 id="view">Компонент списка</h2>
+<p>Тип входных данных лежит рядом с компонентом. Обёртка <code>reatomComponent</code> подписывает представление на чтения ресурса. Каждая ветка сразу возвращает свой JSX.</p>
+<figure><figcaption><a href="examples/session-list.types.ts">docs-lint/examples/session-list.types.ts</a></figcaption>
+<pre><code data-source="examples/session-list.types.ts">import type { createSessions } from './sessions.reatom'
+
+export interface SessionListProps {
+  readonly sessions: ReturnType&lt;typeof createSessions&gt;
+}</code></pre></figure>
+<figure><figcaption><a href="examples/session-list.tsx">docs-lint/examples/session-list.tsx</a></figcaption>
+<pre><code data-source="examples/session-list.tsx">import { noop, wrap } from '@reatom/core'
+import { reatomComponent } from '@reatom/react'
+import type { SessionListProps } from './session-list.types'
+
+export const SessionList = reatomComponent(({ sessions }: SessionListProps) =&gt; {
+  const rows = sessions.data()
+
+  if (sessions.status().isRejected) {
+    // Ошибка повторной попытки уже отражена в sessions.status().
+    const retry = wrap(() =&gt; { sessions.retry().catch(noop) })
+    return &lt;button type="button" onClick={retry}&gt;Повторить загрузку&lt;/button&gt;
+  }
+
+  if (rows === undefined) return &lt;output&gt;Загружаем сессии…&lt;/output&gt;
+
+  if (rows.length === 0) return &lt;p&gt;Сессий пока нет&lt;/p&gt;
+
+  return &lt;ul&gt;{rows.map(row =&gt; &lt;li key={row.provider + row.id}&gt;{row.title} · {row.provider}&lt;/li&gt;)}&lt;/ul&gt;
+}, 'SessionList')</code></pre></figure>
+</section>
+<section aria-labelledby="resource"><h2 id="resource">Запрос и повторная попытка</h2>
+<p>Рабочее пространство сейчас хранит сессии в <a href="../src/features/sessions/session-storage.adapter.ts">sessionStorage</a>. Ниже показан проверяемый пример для HTTP-списка. Его контракт содержит три поля для отображения.</p>
+<figure><figcaption><a href="examples/sessions.types.ts">docs-lint/examples/sessions.types.ts</a></figcaption>
+<pre><code data-source="examples/sessions.types.ts">export interface Session {
+  readonly id: string
+  readonly title: string
+  readonly provider: 'Codex' | 'Claude'
+}</code></pre></figure>
+<p>API принимает сигнал отмены, читает ответ как <code>unknown</code> и проверяет каждую строку. Повторную попытку запускает кнопка списка через ресурс.</p>
+<figure><figcaption><a href="examples/sessions.api.ts">docs-lint/examples/sessions.api.ts</a></figcaption>
+<pre><code data-source="examples/sessions.api.ts">export const getSessions = async (url: URL, signal: AbortSignal): Promise&lt;Session[]&gt; =&gt; {
+  const rows = await ky.get(url, { signal, retry: 0 }).json&lt;unknown&gt;()
+  return parseSessions(rows)
+}</code></pre></figure>
+<p>Модель передаёт сигнал в запрос. Расширение <code>withAsyncData</code> предоставляет компоненту данные, статус и повторную загрузку.</p>
+<figure><figcaption><a href="examples/sessions.reatom.ts">docs-lint/examples/sessions.reatom.ts</a></figcaption>
+<pre><code data-source="examples/sessions.reatom.ts">import { abortVar, computed, withAsyncData, wrap } from '@reatom/core'
+import type { Session } from './sessions.types'
+
+export const createSessions = (listSessions: (signal: AbortSignal) =&gt; Promise&lt;Session[]&gt;) =&gt; {
+  return computed(async () =&gt; {
+    const signal = abortVar.require().signal
+    return wrap(listSessions(signal))
+  }, 'sessions.list').extend(withAsyncData({ status: true }))
+}</code></pre></figure>
+<p>При сборке зависимостей связываем конкретный адрес с API и передаём получившуюся модель в <code>SessionList</code>.</p>
+<figure><figcaption><a href="examples/remote-sessions.ts">docs-lint/examples/remote-sessions.ts</a></figcaption>
+<pre><code data-source="examples/remote-sessions.ts">import { getSessions } from './sessions.api'
+import { createSessions } from './sessions.reatom'
+
+export const createRemoteSessions = (url: URL) =&gt; createSessions(signal =&gt; getSessions(url, signal))</code></pre></figure>
+</section>
+<section aria-labelledby="main"><h2 id="main">Node.js в Electron</h2>
+<p>Главный процесс вычисляет путь к ресурсам через <code>node:path</code> и создаёт окно. В режиме разработки он открывает адрес Vite, в сборке загружает локальный HTML.</p>
+<figure><figcaption><a href="../src/main/index.ts">src/main/index.ts</a></figcaption>
+<pre><code data-source="../src/main/index.ts">import { join } from 'node:path'
+import { app, BrowserWindow } from 'electron'
+
+const icon = join(app.getAppPath(), 'resources', 'icon.png')
+
+const openWindow = async () =&gt; {
+  const window = new BrowserWindow({
+    width: 720,
+    height: 480,
+    title: app.getName(),
+    icon,
+    webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false },
+  })
+  const devUrl = process.env['ELECTRON_RENDERER_URL']
+  if (!app.isPackaged &amp;&amp; devUrl !== undefined) {
+    await window.loadURL(devUrl)
+  } else {
+    await window.loadFile(join(import.meta.dirname, '../renderer/index.html'))
+  }
+}</code></pre></figure>
+</section>
+<section aria-labelledby="iv3"><h2 id="iv3">Что можно взять из iv3</h2>
+<p>В соседнем репозитории iv3, в Rust-модуле <code>crates/stepan_verify_core/src/sessions.rs</code>, уже есть <code>scan_all(max_age)</code>. Он читает локальные индексы Codex и Claude, отбирает недавние сессии и сортирует их по времени обновления.</p>
+<p>Это кандидат на повторное использование. Для подключения понадобится граница между Rust и главным процессом Electron, например небольшой CLI с JSON-ответом. В renderer достаточно передавать поля для списка. Сейчас приложение использует браузерное хранилище, интеграция с Rust остаётся отдельной задачей.</p>
+</section>
+<section aria-labelledby="lint"><h2 id="lint">Как проверить изменения</h2>
+<dl><dt><code>npm run lint</code></dt><dd>Проверяет приложение, инструменты и разрешённые примеры. Правила <code>project/const-functions</code> и <code>project/separate-types</code> отвечают за форму функций и размещение типов. <code>project/file-roles</code> проверяет роль файла по суффиксу и направление импортов между ролями.</dd><dt><code>npm test</code></dt><dd>Запускает vitest для чистых функций из <code>*.domain.ts</code>.</dd><dt><code>npm run docs-lint</code></dt><dd>Проверяет разрешённые примеры, ожидаемые диагностики и фрагменты исходников на этой странице.</dd><dt><code>npm run build</code></dt><dd>Запускает TypeScript, Oxlint, тесты, проверку примеров и производственную сборку Electron.</dd></dl>
+</section>
+</main>
+</div>
+</body>
+</html>

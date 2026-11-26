@@ -1,6 +1,6 @@
 import type { Context, ESTree, Scope } from '@oxlint/plugins'
 
-export function binding(identifier: ESTree.IdentifierReference, context: Context) {
+export const binding = (identifier: ESTree.IdentifierReference, context: Context) => {
   let scope: Scope | null = context.sourceCode.getScope(identifier)
   while (scope !== null) {
     const variable = scope.set.get(identifier.name)
@@ -10,7 +10,7 @@ export function binding(identifier: ESTree.IdentifierReference, context: Context
   return undefined
 }
 
-function importedName(identifier: ESTree.IdentifierReference, context: Context, source: string) {
+const importedName = (identifier: ESTree.IdentifierReference, context: Context, source: string) => {
   const definition = binding(identifier, context)
   if (definition?.parent?.type !== 'ImportDeclaration'
       || definition.parent.source.value !== source) return undefined
@@ -20,7 +20,7 @@ function importedName(identifier: ESTree.IdentifierReference, context: Context, 
   return imported.type === 'Identifier' ? imported.name : imported.value
 }
 
-export function primitiveName(callee: ESTree.CallExpression['callee'], context: Context, source = '@reatom/core') {
+export const primitiveName = (callee: ESTree.CallExpression['callee'], context: Context, source = '@reatom/core') => {
   if (callee.type === 'Identifier') return importedName(callee, context, source)
   if (callee.type !== 'MemberExpression' || callee.object.type !== 'Identifier'
       || importedName(callee.object, context, source) !== '*') return undefined

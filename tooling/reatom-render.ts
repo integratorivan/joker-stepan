@@ -2,18 +2,12 @@ import { defineRule } from '@oxlint/plugins'
 import type { Context, ESTree } from '@oxlint/plugins'
 import { SignatureKind } from 'typescript/unstable/sync'
 import type { Checker, Type } from 'typescript/unstable/sync'
+import type { RenderCandidate } from './reatom-render.types.ts'
 import { inspectTypes, isStateUnit } from './inspect-types.ts'
 import { binding, primitiveName } from './reatom-imports.ts'
 import { componentWrapper, enclosingFunction, renderPhase } from './render-phase.ts'
 
-type Check = 'read' | 'init' | 'write' | 'create'
-interface Candidate {
-  kind: Check
-  call: ESTree.CallExpression
-  value: ESTree.Expression
-}
-
-function producesModel(checker: Checker, type: Type) {
+const producesModel = (checker: Checker, type: Type) => {
   const isUnit = (value: Type) => checker.getPropertyOfType(value, '__reatom') !== undefined
   if (isUnit(type)) return false
   return checker.getSignaturesOfType(type, SignatureKind.Call).some(signature => {
@@ -26,7 +20,7 @@ function producesModel(checker: Checker, type: Type) {
   })
 }
 
-function isCreateCall(callee: ESTree.CallExpression['callee'], context: Context) {
+const isCreateCall = (callee: ESTree.CallExpression['callee'], context: Context) => {
   if (callee.type === 'MemberExpression') return callee.property.type === 'Identifier' && /^create[A-Z]/u.test(callee.property.name)
   if (callee.type !== 'Identifier') return false
   const definition = binding(callee, context)?.node
@@ -37,7 +31,7 @@ function isCreateCall(callee: ESTree.CallExpression['callee'], context: Context)
 
 export const trackedRender = defineRule({
   meta: { messages: {
-    read: 'Оберните компонент, читающий Reatom, в reatomComponent. См. docs-lint/examples/counter-view.tsx.',
+    read: 'Оберните компонент, читающий Reatom, в reatomComponent. См. docs-lint/examples/counter-button.tsx.',
     init: 'Прочитайте атом в возвращаемой функции рендера фабрики. См. docs-lint/examples/page-counter.tsx.',
     create: 'Создайте экземпляр модели в инициализаторе reatomFactoryComponent. См. docs-lint/examples/page-counter.tsx.',
     write: 'Изменяйте атом через действие модели. См. docs-lint/examples/pagination.reatom.ts.',
@@ -45,7 +39,7 @@ export const trackedRender = defineRule({
     plain: 'Для JSX из props достаточно обычной стрелки. См. docs-lint/examples/page-label.tsx.',
   } },
   create(context) {
-    const candidates: Candidate[] = []
+    const candidates: RenderCandidate[] = []
     const projections = new Set<ESTree.ArrowFunctionExpression>()
     return {
       CallExpression(node) {

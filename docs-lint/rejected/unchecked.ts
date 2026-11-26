@@ -1,3 +1,3 @@
-export function unchecked(input: unknown) {
+export const unchecked = (input: unknown) => {
   return input as string
 }

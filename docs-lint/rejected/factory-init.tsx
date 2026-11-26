@@ -1,5 +1,5 @@
 import { reatomFactoryComponent as factory } from '@reatom/react'
-import { count } from '../../src/renderer/model/counter'
+import { count } from '../examples/counter'
 
 export const Snapshot = factory(() => {
   const value = count()

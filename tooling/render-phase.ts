@@ -1,16 +1,14 @@
 import type { Context, ESTree } from '@oxlint/plugins'
 import { primitiveName } from './reatom-imports.ts'
 
-export function componentWrapper(node: ESTree.Node, context: Context) {
+export const componentWrapper = (node: ESTree.Node, context: Context) => {
   if (node.type !== 'CallExpression') return undefined
   const name = primitiveName(node.callee, context, '@reatom/react')
   if (name === 'reatomComponent' || name === 'reatomFactoryComponent') return name
   return undefined
 }
 
-type Fn = NonNullable<ReturnType<typeof enclosingFunction>>
-
-export function enclosingFunction(node: ESTree.Node) {
+export const enclosingFunction = (node: ESTree.Node) => {
   let parent = node.parent
   while (parent && parent.type !== 'Program') {
     if (parent.type === 'ArrowFunctionExpression' || parent.type === 'FunctionDeclaration'
@@ -20,7 +18,7 @@ export function enclosingFunction(node: ESTree.Node) {
   return undefined
 }
 
-export function factoryRender(fn: Fn, context: Context) {
+export const factoryRender = (fn: NonNullable<ReturnType<typeof enclosingFunction>>, context: Context) => {
   const setup = enclosingFunction(fn)
   if (setup?.type !== 'ArrowFunctionExpression' || componentWrapper(setup.parent, context) !== 'reatomFactoryComponent') return false
   return setup.body === fn || fn.parent.type === 'ReturnStatement'
@@ -28,7 +26,7 @@ export function factoryRender(fn: Fn, context: Context) {
 
 const iterators = new Set(['map', 'flatMap', 'filter', 'some', 'every', 'find', 'reduce'])
 
-export function renderPhase(node: ESTree.Node, context: Context) {
+export const renderPhase = (node: ESTree.Node, context: Context) => {
   let owner = enclosingFunction(node)
   while (owner !== undefined) {
     let parent = owner.parent

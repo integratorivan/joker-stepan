@@ -1,3 +1,3 @@
-export function saveDraft(save: () => Promise<void>) {
+export const saveDraft = (save: () => Promise<void>) => {
   save()
 }

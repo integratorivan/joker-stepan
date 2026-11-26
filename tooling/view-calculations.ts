@@ -3,7 +3,7 @@ import type { Context, ESTree } from '@oxlint/plugins'
 import { binding } from './reatom-imports.ts'
 
 // Match the two pagination formulas from the convention, leaving layout arithmetic in JSX available.
-function mathMethod(node: ESTree.Node | undefined, context: Context) {
+const mathMethod = (node: ESTree.Node | undefined, context: Context) => {
   if (node?.type !== 'CallExpression' || node.callee.type !== 'MemberExpression') return undefined
   const { object, property, computed } = node.callee
   if (object.type !== 'Identifier' || object.name !== 'Math' || binding(object, context) || computed) return undefined
