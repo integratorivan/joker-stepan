@@ -1,0 +1,5 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": { "lib": ["ES2024", "DOM", "ESNext.Disposable"], "types": ["node"] },
+  "include": ["**/*.ts", "../../electron.vite.config.ts", "../../oxlint.config.ts", "../../tooling/**/*.ts", "../../docs-lint/*.ts"]
+}
